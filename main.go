@@ -15,8 +15,8 @@ import (
 var reg []*regexp.Regexp
 
 func Proxy(c *gin.Context) {
-	s := c.Param("path")
-	if s == "" {
+	s := c.Request.URL.String()
+	if s == "/" {
 		c.String(http.StatusOK, "Server running.")
 		return
 	} else if s == "/reload" {

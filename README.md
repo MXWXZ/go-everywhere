@@ -1,6 +1,9 @@
 # go-everywhere
 Proxy single page in whitelist with go.
 
+- [x] http/https page
+- [x] http/https git repository
+
 ## Deploy
 Use source
 
@@ -15,6 +18,8 @@ Or Docker
     chmod 777 whitelist.txt  # otherwise you can't sync the file inside docker
     sudo docker run -v $(pwd)/whitelist.txt:/app/whitelist.txt -p 8080:8080 -d imwxz/go-everywhere
 
+View `http://localhost:8080/` for running check, view `http://localhost:8080/https://www.google.com/` for proxy.
+
 ## Config
 Edit `whitelist.txt` to give access(do NOT change the filename!)
 
@@ -28,7 +33,7 @@ If you do not need whitelist, just insert this in the file
 
 ## Router
 - `/`: running check
-- `/?url=xxx`: proxy url, **http/https prefix is a must**, like `/?url=https://google.com`
+- `/xxx`: proxy url, **http/https prefix is a must**, like `/https://www.google.com`
 - `/reload`: reload whitelist without restart server
 
 ## Environment variable
