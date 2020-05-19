@@ -9,6 +9,12 @@ Use source
 
 Or [release binary](https://github.com/MXWXZ/go-everywhere/releases)
 
+Or Docker
+
+    touch whitelist.txt
+    chmod 777 whitelist.txt  # otherwise you can't sync the file inside docker
+    sudo docker run -v $(pwd)/whitelist.txt:/app/whitelist.txt -p 8080:8080 -d imwxz/go-everywhere
+
 ## Config
 Edit `whitelist.txt` to give access(do NOT change the filename!)
 

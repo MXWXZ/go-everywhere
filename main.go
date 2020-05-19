@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -14,11 +15,20 @@ import (
 var reg []*regexp.Regexp
 
 func Proxy(c *gin.Context) {
-	s := c.Query("url")
+	s := c.Param("path")
 	if s == "" {
 		c.String(http.StatusOK, "Server running.")
 		return
+	} else if s == "/reload" {
+		err := LoadFile()
+		if err != nil {
+			c.String(http.StatusOK, err.Error())
+		} else {
+			c.String(http.StatusOK, "Whitelist reloaded.")
+		}
+		return
 	}
+	s = s[1:]
 
 	flag := false
 	for _, v := range reg {
@@ -45,11 +55,21 @@ func Proxy(c *gin.Context) {
 	director := func(req *http.Request) {
 		req = r
 	}
-	proxy := &httputil.ReverseProxy{Director: director}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	proxy := &httputil.ReverseProxy{
+		Transport: tr,
+		Director:  director,
+	}
+
+	//data, _ := httputil.DumpRequest(r, true)
+	//fmt.Printf("%s", string(data))
+
 	proxy.ServeHTTP(c.Writer, r)
 
-	if c.Writer.Status() == 301 {
-		c.Redirect(http.StatusMovedPermanently, "/?url="+c.Writer.Header().Get("Location"))
+	if c.Writer.Status() == 301 || c.Writer.Status() == 302 {
+		c.Redirect(http.StatusMovedPermanently, "/"+c.Writer.Header().Get("Location"))
 	}
 }
 
@@ -81,14 +101,6 @@ func main() {
 		panic(err)
 	}
 	r := gin.Default()
-	r.GET("/reload", func(c *gin.Context) {
-		err := LoadFile()
-		if err != nil {
-			c.String(http.StatusOK, err.Error())
-		} else {
-			c.String(http.StatusOK, "Whitelist reloaded.")
-		}
-	})
-	r.Any("/", Proxy)
+	r.Any("/*path", Proxy)
 	_ = r.Run()
 }
