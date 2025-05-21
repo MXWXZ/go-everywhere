@@ -3,9 +3,8 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"io"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"regexp"
 
@@ -42,35 +41,37 @@ func Proxy(c *gin.Context) {
 		return
 	}
 
-	u, err := url.Parse(s)
-	if err != nil {
-		c.AbortWithStatus(500)
-		return
-	}
-	r := c.Request
-	r.URL = u
-	r.Host = r.URL.Host
-	r.RequestURI = u.RawQuery
-
-	director := func(req *http.Request) {
-		req = r
-	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	proxy := &httputil.ReverseProxy{
-		Transport: tr,
-		Director:  director,
+	client := &http.Client{Transport: tr}
+
+	req, err := http.NewRequest(c.Request.Method, s, c.Request.Body)
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
 	}
 
-	//data, _ := httputil.DumpRequest(r, true)
-	//fmt.Printf("%s", string(data))
-
-	proxy.ServeHTTP(c.Writer, r)
-
-	if c.Writer.Status() == 301 || c.Writer.Status() == 302 {
-		c.Redirect(http.StatusMovedPermanently, "/"+c.Writer.Header().Get("Location"))
+	for header, values := range c.Request.Header {
+		for _, value := range values {
+			req.Header.Add(header, value)
+		}
 	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Status(http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	for header, values := range resp.Header {
+		for _, value := range values {
+			c.Writer.Header().Add(header, value)
+		}
+	}
+	c.Status(resp.StatusCode)
+	io.Copy(c.Writer, resp.Body)
 }
 
 func LoadFile() error {
